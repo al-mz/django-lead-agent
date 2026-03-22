@@ -1,0 +1,96 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: lead_qualifier
+      POSTGRES_USER: lead_qualifier
+      POSTGRES_PASSWORD: lead_qualifier
+    volumes:
+      - lead_qualifier_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lead_qualifier"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    command: python app/manage.py runserver 0.0.0.0:8000
+    environment:
+      - DATABASE_URL=postgresql://lead_qualifier:lead_qualifier@db:5432/lead_qualifier
+      - REDIS_URL=redis://redis:6379/0
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-sonnet-4-6}
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - PYTHONPATH=/code/app
+    ports:
+      - "8001:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/code
+
+  worker:
+    build: .
+    command: celery -A config worker --loglevel=info --concurrency=4
+    environment:
+      - DATABASE_URL=postgresql://lead_qualifier:lead_qualifier@db:5432/lead_qualifier
+      - REDIS_URL=redis://redis:6379/0
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-sonnet-4-6}
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - PYTHONPATH=/code/app
+      - BRAVE_API_KEY=${BRAVE_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/code
+
+  beat:
+    build: .
+    command: celery -A config beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://lead_qualifier:lead_qualifier@db:5432/lead_qualifier
+      - REDIS_URL=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - PYTHONPATH=/code/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/code
+
+  flower:
+    build: .
+    command: celery -A config flower --port=5555
+    environment:
+      - DATABASE_URL=postgresql://lead_qualifier:lead_qualifier@db:5432/lead_qualifier
+      - REDIS_URL=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - PYTHONPATH=/code/app
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/code
+
+volumes:
+  lead_qualifier_postgres_data:
