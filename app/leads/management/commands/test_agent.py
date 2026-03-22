@@ -102,6 +102,8 @@ class Command(BaseCommand):
         qual_dict = result["qualification_result"]
         qual_dict["turns"] = result["turns"]
         qual_dict["duration_ms"] = result["duration_ms"]
+        qual_dict["total_cost_usd"] = result["total_cost_usd"]
+        qual_dict["usage"] = result["usage"]
 
         routing_queue, sla_deadline = _apply_routing_rules(qual_dict)
 

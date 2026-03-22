@@ -61,6 +61,8 @@ def qualify_lead_task(self, lead_id: str):
         qual_dict = result["qualification_result"]
         qual_dict["turns"] = result["turns"]
         qual_dict["duration_ms"] = result["duration_ms"]
+        qual_dict["total_cost_usd"] = result["total_cost_usd"]
+        qual_dict["usage"] = result["usage"]
 
         # Apply invariants in-memory before DB write.
         # The DB never holds a state that violates routing rules.

@@ -121,12 +121,16 @@ async def run_lead_agent(
 
     turns = 0
     structured_output = None
+    total_cost_usd = None
+    usage = None
 
     async for message in query(prompt=prompt_stream(), options=options):
         if isinstance(message, AssistantMessage):
             turns += 1
         elif isinstance(message, ResultMessage):
             structured_output = message.structured_output
+            total_cost_usd = message.total_cost_usd
+            usage = message.usage
 
     if structured_output is None:
         raise RuntimeError("Agent completed without producing structured output")
@@ -137,4 +141,6 @@ async def run_lead_agent(
         "turns": turns,
         "duration_ms": duration_ms,
         "run_id": run_id,
+        "total_cost_usd": total_cost_usd,
+        "usage": usage,
     }
