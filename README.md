@@ -25,7 +25,7 @@ flowchart TD
 
     F --> J[LeadQualificationResult\nStructured JSON output]
     J --> K[_apply_routing_rules\nDeterministic invariants]
-    K --> L[Atomic DB write\nstatus · score · queue · SLA · draft reply]
+    K --> L[Atomic DB write\nstatus, score, queue, SLA, draft reply]
 
     L --> M[Django Admin\nReasoning timeline · audit log]
 
@@ -36,7 +36,7 @@ flowchart TD
         I
     end
 
-    subgraph Invariants — code, not agent
+    subgraph Invariants["Invariants — code, not agent"]
         K
     end
 ```
