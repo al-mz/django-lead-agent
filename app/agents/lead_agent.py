@@ -13,7 +13,7 @@ import uuid
 
 from claude_agent_sdk import query, ClaudeAgentOptions, AssistantMessage, ResultMessage
 from agents.mcp_server import lead_server
-from agents.hooks import build_audit_hooks
+from agents.hooks import build_audit_hooks, agent_start, agent_think, agent_result, agent_draft
 from agents.schemas import LeadQualificationResult
 
 _DEFAULT_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
@@ -87,6 +87,7 @@ async def run_lead_agent(
     """
     run_id = str(uuid.uuid4())
     start_ms = int(time.time() * 1000)
+    agent_start(lead_email)
 
     options = ClaudeAgentOptions(
         system_prompt=_build_system_prompt(config),
@@ -127,10 +128,27 @@ async def run_lead_agent(
     async for message in query(prompt=prompt_stream(), options=options):
         if isinstance(message, AssistantMessage):
             turns += 1
+            for block in message.content:
+                block_type = type(block).__name__
+                if block_type == "TextBlock" and getattr(block, "text", "").strip():
+                    agent_think(block.text)
+                elif block_type == "ThinkingBlock" and getattr(block, "thinking", "").strip():
+                    agent_think(block.thinking)
         elif isinstance(message, ResultMessage):
             structured_output = message.structured_output
             total_cost_usd = message.total_cost_usd
             usage = message.usage
+            if structured_output:
+                duration_so_far = int(time.time() * 1000) - start_ms
+                agent_result(
+                    tier=structured_output.get("tier", "?"),
+                    score=structured_output.get("icp_score", 0.0),
+                    queue=structured_output.get("routing_queue", "?"),
+                    duration_ms=duration_so_far,
+                    cost_usd=total_cost_usd,
+                )
+                if structured_output.get("draft_reply"):
+                    agent_draft(structured_output["draft_reply"])
 
     if structured_output is None:
         raise RuntimeError("Agent completed without producing structured output")

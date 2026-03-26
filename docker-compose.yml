@@ -21,6 +21,22 @@ services:
       timeout: 5s
       retries: 5
 
+  migrate:
+    build: .
+    command: >
+      sh -c "python app/manage.py migrate --noinput &&
+             python app/manage.py createsuperuser --noinput --username admin --email admin@localhost || true"
+    environment:
+      - DATABASE_URL=postgresql://lead_qualifier:lead_qualifier@db:5432/lead_qualifier
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - PYTHONPATH=/code/app
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-admin}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/code
+
   web:
     build: .
     command: python app/manage.py runserver 0.0.0.0:8000
@@ -39,6 +55,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - .:/code
 
@@ -53,11 +71,14 @@ services:
       - DJANGO_SETTINGS_MODULE=config.settings
       - PYTHONPATH=/code/app
       - BRAVE_API_KEY=${BRAVE_API_KEY:-}
+      - AGENT_VERBOSE=${AGENT_VERBOSE:-false}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - .:/code
 
@@ -74,6 +95,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - .:/code
 
@@ -83,7 +106,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://lead_qualifier:lead_qualifier@db:5432/lead_qualifier
       - REDIS_URL=redis://redis:6379/0
-      - DJANGO_SETTINGS_MODULE=config.settings
+      - DJANGO_SETTINGS_METHOD=config.settings
       - PYTHONPATH=/code/app
     ports:
       - "5555:5555"
