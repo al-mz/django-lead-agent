@@ -4,6 +4,12 @@ Event-driven lead qualification using the Claude Agent SDK, Django, and Celery. 
 
 The architecture is domain-agnostic; the leads domain can be swapped for any business workflow triggered by a database event.
 
+
+
+https://github.com/user-attachments/assets/48965cbd-081d-4016-97df-fed1495ae28a
+
+
+
 ---
 
 ## Architecture
